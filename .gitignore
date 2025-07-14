@@ -1,0 +1,37 @@
+*.swp
+.cache/
+.vscode
+.ccache
+.env
+*.code-workspace
+.ipynb_checkpoints
+*.venv/
+mlir_venv/
+externals/pytorch/
+libtorch*
+
+/build/
+.build-cache/
+/setup_build/
+__pycache__
+*.pyc
+
+.pytype
+
+
+# Pip artifacts.
+*.egg-info
+*.whl
+/wheelhouse
+
+# Bazel
+bazel-*
+
+
+#Docker builds
+build_oot/
+docker_venv/
+llvm-build/
+
+# C++ build artifacts
+compile_commands.json

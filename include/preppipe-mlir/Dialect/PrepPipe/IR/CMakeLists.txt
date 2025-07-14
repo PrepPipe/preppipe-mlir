@@ -1,0 +1,15 @@
+set(LLVM_TARGET_DEFINITIONS PrepPipeOps.td)
+mlir_tablegen(PrepPipeOps.h.inc -gen-op-decls)
+mlir_tablegen(PrepPipeOps.cpp.inc -gen-op-defs)
+mlir_tablegen(PrepPipeDialect.h.inc -gen-dialect-decls -dialect=preppipe)
+mlir_tablegen(PrepPipeDialect.cpp.inc -gen-dialect-defs -dialect=preppipe)
+add_public_tablegen_target(MLIRPrepPipeOpsIncGen)
+add_dependencies(mlir-headers MLIRPrepPipeOpsIncGen)
+
+set(LLVM_TARGET_DEFINITIONS PrepPipeTypes.td)
+mlir_tablegen(PrepPipeTypes.h.inc -gen-typedef-decls)
+mlir_tablegen(PrepPipeTypes.cpp.inc -gen-typedef-defs)
+add_public_tablegen_target(MLIRPrepPipeTypesIncGen)
+
+add_mlir_doc(PrepPipeDialect PrepPipeDialect PrepPipe/ -gen-dialect-doc)
+add_mlir_doc(PrepPipeOps PrepPipeOps PrepPipe/ -gen-op-doc)
