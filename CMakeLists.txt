@@ -154,7 +154,7 @@ if(MLIR_ENABLE_BINDINGS_PYTHON)
   endif()
 endif()
 
-#add_subdirectory(test)
+add_subdirectory(test)
 
 if (NOT LLVM_INSTALL_TOOLCHAIN_ONLY)
   install(DIRECTORY include/preppipe-mlir include/preppipe-mlir-c
