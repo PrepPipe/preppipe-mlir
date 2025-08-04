@@ -3,7 +3,7 @@
 
 include "mlir/IR/AttrTypeBase.td"
 include "mlir/IR/DialectBase.td"
-include "preppipe-mlir/Dialect/PrepPipe/IR/PrepPipeDialect.td"
+include "preppipe-mlir/Dialect/PrepPipe/IR/PrepPipeBase.td"
 
 class PrepPipe_Type<string name, string typeMnemonic,
                  string baseCppClass = "::mlir::Type">
@@ -22,11 +22,24 @@ class PrepPipe_TypeWithContainedType<string name, string typeMnemonic> : PrepPip
   ];
 }
 
-def PPVoidType : PrepPipe_Type<"Void", "pp.void"> {
+def PPVoidType : PrepPipe_Type<"Void", "void"> {
   let summary = "Void type for PrepPipe";
+}
+
+// Specific asset types
+def ImageType : PrepPipe_Type<"Image", "image"> {
+  let summary = "General image type in PrepPipe";
   let description = [{
-    This type represents a void type in the PrepPipe dialect.
-    该类型表示 PrepPipe 方言中的空类型。
+    This type represents an image in the PrepPipe pipeline.
+    The image can be an expression (e.g., fill) or a reference to an existing image asset.
+  }];
+}
+
+def AudioType : PrepPipe_Type<"Audio", "audio"> {
+  let summary = "General audio type in PrepPipe";
+  let description = [{
+    This type represents an audio asset in the PrepPipe pipeline.
+    The audio can be an expression or a reference to an existing audio asset.
   }];
 }
 

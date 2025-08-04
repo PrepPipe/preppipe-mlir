@@ -1,5 +1,5 @@
 #include "preppipe-mlir/InitAll.h"
-#include "preppipe-mlir/Dialect/PrepPipe/IR/PrepPipeDialect.h"
+#include "preppipe-mlir/Dialect/PrepPipe/IR/PrepPipe.h"
 
 #include "mlir/IR/DialectRegistry.h"
 #include "mlir/IR/MLIRContext.h"

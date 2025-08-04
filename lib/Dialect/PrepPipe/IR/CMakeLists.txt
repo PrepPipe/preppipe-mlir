@@ -1,7 +1,5 @@
 add_mlir_library(PrepPipeMLIRPrepPipeDialect
-  PrepPipeTypes.cpp
-  PrepPipeOps.cpp
-  PrepPipeDialect.cpp
+  PrepPipe.cpp
 
   ADDITIONAL_HEADER_DIRS
   ${PROJECT_SOURCE_DIR}/include/preppipe-mlir/Dialect/PrepPipe
