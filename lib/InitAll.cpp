@@ -18,3 +18,8 @@ void mlir::preppipe::registerAllPasses() {
   // Register all passes that this project produces.
   // This function can be expanded to include specific passes as needed.
 }
+
+void mlir::preppipe::registerAllTranslations() {
+  // Register all translations that this project produces.
+  // This function can be expanded to include specific translations as needed.
+}

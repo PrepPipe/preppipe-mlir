@@ -141,6 +141,7 @@ endif()
 
 add_subdirectory(include)
 add_subdirectory(lib)
+add_subdirectory(lib/CAPI)
 add_subdirectory(tools)
 
 #add_custom_target(check-preppipe-mlir-all)
@@ -194,5 +195,5 @@ endif()
 
 # Finish with top-level Python bindings so it can handle additional deps.
 if(MLIR_ENABLE_BINDINGS_PYTHON)
-#  add_subdirectory(python)
+  add_subdirectory(python)
 endif()

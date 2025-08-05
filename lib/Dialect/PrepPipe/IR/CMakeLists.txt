@@ -1,4 +1,4 @@
-add_mlir_library(PrepPipeMLIRPrepPipeDialect
+add_mlir_library(MLIRPrepPipeDialect
   PrepPipe.cpp
 
   ADDITIONAL_HEADER_DIRS
@@ -16,4 +16,4 @@ add_mlir_library(PrepPipeMLIRPrepPipeDialect
   MLIRSupport
 )
 
-preppipe_mlir_target_includes(PrepPipeMLIRPrepPipeDialect)
+preppipe_mlir_target_includes(MLIRPrepPipeDialect)

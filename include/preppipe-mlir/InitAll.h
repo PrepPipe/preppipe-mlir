@@ -11,6 +11,8 @@ void registerAllDialects(mlir::DialectRegistry &registry);
 
 void registerAllPasses();
 
+void registerAllTranslations();
+
 } // namespace preppipe
 } // namespace mlir
 

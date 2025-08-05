@@ -8,7 +8,7 @@ set(LinkedLibs
   MLIRSupport
 
   # Dialects.
-  PrepPipeMLIRPrepPipeDialect
+  MLIRPrepPipeDialect
 
   # Dialect passes.
   # TODO
