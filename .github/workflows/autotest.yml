@@ -24,3 +24,18 @@ jobs:
           cmake -G Ninja .. -DPREPPIPE_MLIR_OUT_OF_TREE_BUILD=ON
           ln -s /usr/local/bin/lit bin/llvm-lit
           ninja check-preppipe-mlir
+  formatcheck:
+    name: clang-format check
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/preppipe/preppipe-mlir-ci:latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Mark repo as safe for git # otherwise git commands may fail in a container
+        shell: bash
+        run: git config --global --add safe.directory $GITHUB_WORKSPACE
+      - name: Run clang-format check
+        shell: bash
+        run: |
+          python3 .ci/run-clang-format.py $(git ls-files '*.cpp' '*.h' '*.c' '*.cc' '*.hh' '*.cxx' )
