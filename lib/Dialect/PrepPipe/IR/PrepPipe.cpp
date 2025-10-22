@@ -3,15 +3,15 @@
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/DialectImplementation.h"
+#include "mlir/IR/IRMapping.h"
+#include "mlir/IR/OpImplementation.h"
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/IR/TypeUtilities.h"
-#include "mlir/IR/OpImplementation.h"
-#include "mlir/IR/IRMapping.h"
-#include "llvm/ADT/BitVector.h"
-#include "llvm/ADT/StringMap.h"
-#include "llvm/ADT/StringExtras.h"
-#include "llvm/ADT/TypeSwitch.h"
 #include "mlir/Support/LLVM.h"
+#include "llvm/ADT/BitVector.h"
+#include "llvm/ADT/StringExtras.h"
+#include "llvm/ADT/StringMap.h"
+#include "llvm/ADT/TypeSwitch.h"
 #include "llvm/Support/Casting.h"
 
 using namespace mlir;
@@ -47,4 +47,3 @@ void PrepPipeDialect::initialize() {
 #include "preppipe-mlir/Dialect/PrepPipe/IR/PrepPipeAttrs.cpp.inc"
       >();
 }
-

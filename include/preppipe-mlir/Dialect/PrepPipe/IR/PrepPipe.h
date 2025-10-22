@@ -1,13 +1,13 @@
 #ifndef PREPPIPE_PREPPIPE_H
 #define PREPPIPE_PREPPIPE_H
 
+#include "mlir/Bytecode/BytecodeOpInterface.h"
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/Dialect.h"
 #include "mlir/IR/Matchers.h"
 #include "mlir/IR/OpDefinition.h"
 #include "mlir/IR/OpImplementation.h"
 #include "mlir/IR/SymbolTable.h"
-#include "mlir/Bytecode/BytecodeOpInterface.h"
 #include "mlir/Interfaces/CastInterfaces.h"
 #include "mlir/Interfaces/InferTypeOpInterface.h"
 

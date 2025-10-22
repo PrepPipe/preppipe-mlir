@@ -8,10 +8,9 @@
 
 void mlir::preppipe::registerAllDialects(mlir::DialectRegistry &registry) {
   // Register all dialects that this project produces and any dependencies.
-  registry.insert<
-      mlir::preppipe::PrepPipe::PrepPipeDialect
-      //mlir::preppipe::VNModelDialect
-  >();
+  registry.insert<mlir::preppipe::PrepPipe::PrepPipeDialect
+                  // mlir::preppipe::VNModelDialect
+                  >();
 }
 
 void mlir::preppipe::registerAllPasses() {
