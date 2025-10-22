@@ -1,0 +1,26 @@
+name: "AutoTest"
+
+on:
+  workflow_dispatch: # can trigger manually
+  pull_request: # can trigger on pull requests
+  push: # can trigger on pushes
+    branches:
+      - main
+
+jobs:
+  autotest:
+    name: llvm-lit test
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/preppipe/preppipe-mlir-ci:latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Build and run tests
+        shell: bash
+        run: |
+          mkdir build
+          cd build
+          cmake -G Ninja .. -DPREPPIPE_MLIR_OUT_OF_TREE_BUILD=ON
+          ln -s /usr/local/bin/lit bin/llvm-lit
+          ninja check-preppipe-mlir
