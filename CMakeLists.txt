@@ -21,6 +21,7 @@ include(CMakeDependentOption)
 #-------------------------------------------------------------------------------
 
 option(PREPPIPE_MLIR_ENABLE_WERROR_FLAG "Enable `-Werror` flag on supported directories, treat warning as error" OFF)
+option(MLIR_ENABLE_BINDINGS_PYTHON "Enables MLIR Python Bindings" OFF)
 
 set(PREPPIPE_MLIR_TABLEGEN_FLAGS "")
 
@@ -75,16 +76,11 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR OR PREPPIPE_MLIR_OUT_OF_TR
   include(AddMLIR)
   include(HandleLLVMOptions)
 
-  #TODO: support python bindings in out-of-tree builds
-  set(MLIR_ENABLE_BINDINGS_PYTHON ON)
-
   set(PREPPIPE_MLIR_BUILT_STANDALONE ON)
   set(BACKEND_PACKAGE_STRING "LLVM ${LLVM_PACKAGE_VERSION}")
 else()
   message(STATUS "preppipe-mlir in-tree build.")
   # In-tree build with LLVM_EXTERNAL_PROJECTS=preppipe-mlir
-
-  option(MLIR_ENABLE_BINDINGS_PYTHON "Enables MLIR Python Bindings" OFF)
 
   # TODO: Fix this upstream so that global include directories are not needed.
   set(MLIR_MAIN_SRC_DIR ${LLVM_MAIN_SRC_DIR}/../mlir)
