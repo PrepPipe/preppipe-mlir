@@ -35,3 +35,6 @@ llvm-build/
 
 # C++ build artifacts
 compile_commands.json
+
+# other preppipe repos
+preppipe-python

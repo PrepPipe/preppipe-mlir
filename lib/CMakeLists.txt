@@ -2,6 +2,7 @@ preppipe_mlir_enable_werror()
 
 # add_subdirectory(Conversion)
 add_subdirectory(Dialect)
+add_subdirectory(Asset)
 
 set(LinkedLibs
   MLIRIR
@@ -9,6 +10,9 @@ set(LinkedLibs
 
   # Dialects.
   PrepPipeMLIRPrepPipeDialect
+
+  # Asset management.
+  PreppipeAsset
 
   # Dialect passes.
   # TODO
