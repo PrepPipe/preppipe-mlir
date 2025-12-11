@@ -3,6 +3,7 @@ preppipe_mlir_enable_werror()
 # add_subdirectory(Conversion)
 add_subdirectory(Dialect)
 add_subdirectory(Asset)
+add_subdirectory(Frontend)
 
 set(LinkedLibs
   MLIRIR
@@ -10,6 +11,7 @@ set(LinkedLibs
 
   # Dialects.
   PrepPipeMLIRPrepPipeDialect
+  PrepPipeMLIRInputModelDialect
 
   # Asset management.
   PreppipeAsset
