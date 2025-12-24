@@ -31,6 +31,61 @@ using namespace mlir::preppipe::PrepPipe;
 #define GET_OP_CLASSES
 #include "preppipe-mlir/Dialect/PrepPipe/IR/PrepPipeOps.cpp.inc"
 
+//===----------------------------------------------------------------------===//
+// TextAttr custom printer and parser
+//===----------------------------------------------------------------------===//
+
+/// Print a UTF-8 string with minimal escaping (only escape quotes and backslashes)
+static void printUTF8String(raw_ostream &os, StringRef str) {
+  os << '"';
+  for (unsigned char c : str) {
+    if (c == '"' || c == '\\') {
+      os << '\\' << c;
+    } else if (c >= 0x20 && c < 0x7F) {
+      // Printable ASCII
+      os << c;
+    } else {
+      // UTF-8 bytes (including CJK characters) - print as-is
+      os << c;
+    }
+  }
+  os << '"';
+}
+
+Attribute TextAttr::parse(AsmParser &parser, Type type) {
+  if (parser.parseLess())
+    return {};
+
+  // Parse the string content
+  std::string contentStr;
+  if (parser.parseString(&contentStr))
+    return {};
+
+  StringAttr content = StringAttr::get(parser.getContext(), contentStr);
+
+  // Parse optional style dictionary
+  DictionaryAttr style;
+  if (succeeded(parser.parseOptionalComma())) {
+    if (parser.parseAttribute(style))
+      return {};
+  }
+
+  if (parser.parseGreater())
+    return {};
+
+  return TextAttr::get(parser.getContext(), content, style);
+}
+
+void TextAttr::print(AsmPrinter &printer) const {
+  printer << "<";
+  printUTF8String(printer.getStream(), getContent().getValue());
+  if (getStyle()) {
+    printer << ", ";
+    printer.printAttributeWithoutType(getStyle());
+  }
+  printer << ">";
+}
+
 void PrepPipeDialect::initialize() {
   addOperations<
 #define GET_OP_LIST

@@ -9,6 +9,8 @@
 
 void mlir::preppipe::registerAllDialects(mlir::DialectRegistry &registry) {
   // Register all dialects that this project produces and any dependencies.
+  // Note: Arith dialect is registered separately where it's needed (e.g., in JSON frontend)
+  // to avoid linker issues with template instantiation.
   registry.insert<mlir::preppipe::PrepPipe::PrepPipeDialect,
                   mlir::preppipe::InputModel::InputModelDialect
                   // mlir::preppipe::VNModelDialect

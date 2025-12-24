@@ -8,5 +8,6 @@ COMPONENT preppipe-mlir-opt)
 target_link_libraries(preppipe-mlir-opt PRIVATE
   MLIROptLib
   MLIRTransforms
+  MLIRArithDialect
   PrepPipeMLIRInitAll
 )

@@ -43,4 +43,12 @@ def AudioType : PrepPipe_Type<"Audio", "audio"> {
   }];
 }
 
+// UTF-8 encoded string type
+def UTF8StringType : PrepPipe_Type<"UTF8String", "utf8_string"> {
+  let summary = "UTF-8 encoded string type";
+  let description = [{
+    This type represents a UTF-8 encoded string used throughout the PrepPipe pipeline.
+  }];
+}
+
 #endif // PREPPIPE_PREPPIPE_TYPES

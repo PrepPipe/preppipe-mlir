@@ -10,6 +10,7 @@ add_mlir_library(PrepPipeFrontendJSON
   LINK_LIBS PUBLIC
   MLIRIR
   MLIRSupport
+  MLIRArithDialect
   PrepPipeMLIRInputModelDialect
 )
 

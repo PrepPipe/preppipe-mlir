@@ -8,6 +8,7 @@ COMPONENT preppipe-pipeline)
 target_link_libraries(preppipe-pipeline PRIVATE
   MLIROptLib
   MLIRTransforms
+  MLIRArithDialect
   PrepPipeMLIRInitAll
   PrepPipeFrontendJSON
 )
