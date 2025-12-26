@@ -40,6 +40,16 @@ if(MSVC)
 endif()
 
 #-------------------------------------------------------------------------------
+# External dependencies
+#-------------------------------------------------------------------------------
+
+if (USE_SYSTEM_ANTLR4)
+  find_package(antlr4-runtime CONFIG REQUIRED)
+else()
+  add_subdirectory(externals/antlr4-runtime-wrapper EXCLUDE_FROM_ALL)
+endif()
+
+#-------------------------------------------------------------------------------
 # Configure out-of-tree vs in-tree build
 #-------------------------------------------------------------------------------
 
