@@ -103,13 +103,33 @@ def IMFrameOp : InputModel_Op<"frame", [SingleBlock, NoTerminator]> {
 }
 
 //===----------------------------------------------------------------------===
+// IMListItemOp
+//===----------------------------------------------------------------------===
+
+def IMListItemOp : InputModel_Op<"list_item", [SingleBlock, NoTerminator]> {
+  let summary = "Represents a single item in a list";
+  let description = [{
+    Represents a single item in a list. The body region contains the paragraphs
+    that make up this list item.
+  }];
+
+  let arguments = (ins);
+  let results = (outs);
+
+  let regions = (region AnyRegion:$body);
+
+  let assemblyFormat = "$body attr-dict";
+}
+
+//===----------------------------------------------------------------------===
 // IMListOp
 //===----------------------------------------------------------------------===
 
-def IMListOp : InputModel_Op<"list", [NoTerminator]> {
+def IMListOp : InputModel_Op<"list", [SingleBlock, NoTerminator]> {
   let summary = "Represents a list (bullet point or numbered)";
   let description = [{
-    Represents a list with bullet points or numbers. Each list item is a separate region.
+    Represents a list with bullet points or numbers. The body region contains
+    IMListItemOp operations, one for each list item.
   }];
 
   let arguments = (ins
@@ -117,9 +137,9 @@ def IMListOp : InputModel_Op<"list", [NoTerminator]> {
   );
   let results = (outs);
 
-  let regions = (region VariadicRegion<AnyRegion>:$items);
+  let regions = (region AnyRegion:$body);
 
-  let assemblyFormat = "$items attr-dict";
+  let assemblyFormat = "$body attr-dict";
 }
 
 //===----------------------------------------------------------------------===

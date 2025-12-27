@@ -202,34 +202,41 @@ bool parseParagraph(OpBuilder &builder, const JSONValue &jsonParagraph, Block &b
                   // Determine if numbered (check first item for numbering pattern)
                   // For now, assume bulleted lists (is_numbered = false)
                   bool isNumbered = false;
-                  unsigned itemsCount = itemsArray->size();
-                  auto listOp = builder.create<IMListOp>(loc, builder.getBoolAttr(isNumbered), itemsCount);
+                  auto listOp = builder.create<IMListOp>(loc, builder.getBoolAttr(isNumbered));
+
+                  // Get the body region of the list (single block)
+                  auto &listBody = listOp.getBody();
+                  auto *listBodyBlock = builder.createBlock(&listBody);
+                  builder.setInsertionPointToEnd(listBodyBlock);
 
                   // Parse each list item
-                  for (size_t i = 0; i < itemsArray->size(); ++i) {
-                    const JSONValue &itemValue = (*itemsArray)[i];
+                  for (const JSONValue &itemValue : *itemsArray) {
                     if (const llvm::json::Array *itemArray = itemValue.getAsArray()) {
-                      // Each item is a region containing blocks (one block per paragraph)
-                      auto *itemRegion = &listOp.getItems()[i];
+                      // Create IMListItemOp inside the list's body block
+                      auto listItemOp = builder.create<IMListItemOp>(loc);
 
-                      // Parse each paragraph in the item (each creates a new block)
+                      // Get the body region of the list item (single block)
+                      auto &listItemBody = listItemOp.getBody();
+                      auto *listItemBodyBlock = builder.createBlock(&listItemBody);
+                      builder.setInsertionPointToEnd(listItemBodyBlock);
+
+                      // Parse each paragraph in the item (all in the same block)
                       for (const JSONValue &paragraphValue : *itemArray) {
                         if (const llvm::json::Array *paragraphArray = paragraphValue.getAsArray()) {
-                          // Create a new block for this paragraph
-                          auto *itemBlock = builder.createBlock(itemRegion);
-                          builder.setInsertionPointToEnd(itemBlock);
-
-                          // Parse the paragraph elements into this block
-                          if (!parseParagraph(builder, paragraphValue, *itemBlock)) {
+                          // Parse the paragraph elements into the list item's body block
+                          if (!parseParagraph(builder, paragraphValue, *listItemBodyBlock)) {
                             return false;
                           }
                         }
                       }
 
-                      // Restore insertion point to the original block
-                      builder.setInsertionPointToEnd(&block);
+                      // Restore insertion point to the list's body block for next item
+                      builder.setInsertionPointToEnd(listBodyBlock);
                     }
                   }
+
+                  // Restore insertion point to the original block
+                  builder.setInsertionPointToEnd(&block);
                   return true;
                 }
               }
