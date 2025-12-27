@@ -51,13 +51,12 @@ def IMErrorElementOp : InputModel_Op<"error_element", []> {
 
   let arguments = (ins
     StrAttr:$error_code,
-    OptionalAttr<StrAttr>:$error_msg,
-    OptionalAttr<ArrayAttr>:$content
+    OptionalAttr<StrAttr>:$error_msg
   );
   let results = (outs);
 
   let assemblyFormat = [{
-    `errors` $error_code ($error_msg^)? ($content^)? attr-dict
+    `errors` $error_code ($error_msg^)? attr-dict
   }];
 }
 
