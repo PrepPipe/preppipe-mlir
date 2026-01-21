@@ -1,6 +1,7 @@
 
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/MLIRContext.h"
+#include "mlir/IR/OperationSupport.h"
 #include "mlir/IR/Verifier.h"
 #include "mlir/Support/FileUtilities.h"
 #include "mlir/Support/LLVM.h"
@@ -58,16 +59,19 @@ int main(int argc, char **argv) {
   }
 
   // Verify the module
+  OpPrintingFlags flags;
+  flags.enableDebugInfo(true, /*prettyForm=*/false);
+
   if (failed(verify(module))) {
     llvm::errs() << "Error: Module verification failed\n";
-    module.print(llvm::errs());
+    module.print(llvm::errs(), flags);
     return 1;
   }
 
   // Write the module to the output file or stdout
   if (outputPath.empty()) {
     // Write to stdout
-    module.print(llvm::outs());
+    module.print(llvm::outs(), flags);
     llvm::outs() << "\n";
   } else {
     // Write to file
@@ -78,7 +82,7 @@ int main(int argc, char **argv) {
                    << "': " << ec.message() << "\n";
       return 1;
     }
-    module.print(outputFile);
+    module.print(outputFile, flags);
     outputFile << "\n";
   }
 

@@ -8,6 +8,7 @@
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/Attributes.h"
 #include "mlir/IR/DialectRegistry.h"
+#include "mlir/IR/Location.h"
 #include "llvm/Support/JSON.h"
 #include "llvm/Support/FileUtilities.h"
 #include "llvm/Support/MemoryBuffer.h"
@@ -22,11 +23,41 @@ using JSONValue = llvm::json::Value;
 
 namespace {
 
+/// LocationContext tracks file path and provides location creation utilities.
+struct LocationContext {
+  std::string filePath;
+
+  LocationContext(const std::string &path) : filePath(path) {}
+
+  /// Create a FileLineColLoc from line and column numbers.
+  /// Line and column are 1-indexed for display.
+  Location getLocation(MLIRContext &context, unsigned line, unsigned column) {
+    return FileLineColLoc::get(&context, filePath, line, column);
+  }
+
+  /// Compute the length of a text element's content.
+  /// Returns the UTF-8 string length of the content.
+  unsigned computeTextLength(const JSONValue &textElement) {
+    if (const llvm::json::Object *textObj = textElement.getAsObject()) {
+      const JSONValue *contentValue = textObj->get("content");
+      if (contentValue) {
+        if (auto contentStr = contentValue->getAsString()) {
+          return contentStr->str().length();
+        }
+      }
+    }
+    return 0;
+  }
+};
+
+
 /// Parse a text element with optional formatting.
 /// Returns the content attributes to be used in IMElementOp.
+/// Returns the length of the text content via length parameter.
 bool parseTextElement(OpBuilder &builder, Location loc,
                      const llvm::json::Object *textObj,
-                     SmallVector<Attribute> &contentAttrs) {
+                     SmallVector<Attribute> &contentAttrs,
+                     unsigned &length) {
   if (!textObj) return false;
 
   const llvm::json::Value *contentValue = textObj->get("content");
@@ -34,6 +65,9 @@ bool parseTextElement(OpBuilder &builder, Location loc,
 
   auto contentStr = contentValue->getAsString();
   if (!contentStr) return false;
+
+  // Store the length of the content
+  length = contentStr->str().length();
 
   // Check for formatting
   const llvm::json::Value *formatValue = textObj->get("format");
@@ -87,9 +121,11 @@ bool parseTextElement(OpBuilder &builder, Location loc,
 }
 
 /// Parse an asset reference element.
+/// Returns the length (always 1 for non-text elements) via length parameter.
 bool parseAssetRefElement(OpBuilder &builder, Location loc,
                           const llvm::json::Object *assetObj,
-                          SmallVector<Attribute> &contentAttrs) {
+                          SmallVector<Attribute> &contentAttrs,
+                          unsigned &length) {
   if (!assetObj) return false;
 
   const llvm::json::Value *refValue = assetObj->get("ref");
@@ -97,6 +133,9 @@ bool parseAssetRefElement(OpBuilder &builder, Location loc,
 
   auto refStr = refValue->getAsString();
   if (!refStr) return false;
+
+  // Non-text elements are counted as 1 character wide
+  length = 1;
 
   // Create an asset reference as a TextAttr
   // TODO: Create proper asset reference attribute/type later
@@ -109,10 +148,16 @@ bool parseAssetRefElement(OpBuilder &builder, Location loc,
 
 /// Parse a JSON value representing a document element and convert it to MLIR operations.
 /// \param builder The MLIR builder to use.
+/// \param locCtx The location context for creating locations.
 /// \param jsonElement The JSON element to parse.
 /// \param block The block to add the operations to.
-bool parseElement(OpBuilder &builder, const JSONValue &jsonElement, Block &block) {
-  Location loc = builder.getUnknownLoc();
+/// \param line The line number (1-indexed).
+/// \param column The column number (1-indexed), updated to reflect element length.
+/// \return true on success, false on failure.
+/// The column parameter is updated to point after this element.
+bool parseElement(OpBuilder &builder, LocationContext &locCtx,
+                  const JSONValue &jsonElement, Block &block,
+                  unsigned line, unsigned &column) {
   builder.setInsertionPointToEnd(&block);
 
   if (const llvm::json::Object *elementObj = jsonElement.getAsObject()) {
@@ -123,24 +168,36 @@ bool parseElement(OpBuilder &builder, const JSONValue &jsonElement, Block &block
     if (!typeStr) return false;
 
     if (*typeStr == "text") {
+      // Create location for this element
+      Location loc = locCtx.getLocation(*builder.getContext(), line, column);
+
       SmallVector<Attribute> contentAttrs;
-      if (!parseTextElement(builder, loc, elementObj, contentAttrs)) {
+      unsigned elementLength = 0;
+      if (!parseTextElement(builder, loc, elementObj, contentAttrs, elementLength)) {
         return false;
       }
       if (!contentAttrs.empty()) {
         auto contentArray = builder.getArrayAttr(contentAttrs);
         builder.create<IMElementOp>(loc, contentArray);
       }
+      // Update column: element starts at current column, ends at column + length
+      column += elementLength;
       return true;
     } else if (*typeStr == "assetref") {
+      // Create location for this element
+      Location loc = locCtx.getLocation(*builder.getContext(), line, column);
+
       SmallVector<Attribute> contentAttrs;
-      if (!parseAssetRefElement(builder, loc, elementObj, contentAttrs)) {
+      unsigned elementLength = 0;
+      if (!parseAssetRefElement(builder, loc, elementObj, contentAttrs, elementLength)) {
         return false;
       }
       if (!contentAttrs.empty()) {
         auto contentArray = builder.getArrayAttr(contentAttrs);
         builder.create<IMElementOp>(loc, contentArray);
       }
+      // Update column: non-text elements are 1 character wide
+      column += elementLength;
       return true;
     }
   }
@@ -150,10 +207,16 @@ bool parseElement(OpBuilder &builder, const JSONValue &jsonElement, Block &block
 
 /// Parse a JSON value representing a paragraph and convert it to MLIR operations.
 /// \param builder The MLIR builder to use.
+/// \param locCtx The location context for creating locations.
 /// \param jsonParagraph The JSON paragraph to parse.
 /// \param block The block to add the operations to.
-bool parseParagraph(OpBuilder &builder, const JSONValue &jsonParagraph, Block &block) {
-  Location loc = builder.getUnknownLoc();
+/// \param line The line number (1-indexed), updated if list is encountered.
+/// \param column The column number (1-indexed), updated to reflect element lengths.
+/// \return true on success, false on failure.
+/// If a list is encountered, the line parameter is updated to reflect the final line after all list items.
+bool parseParagraph(OpBuilder &builder, LocationContext &locCtx,
+                   const JSONValue &jsonParagraph, Block &block,
+                   unsigned &line, unsigned &column) {
   builder.setInsertionPointToEnd(&block);
 
   if (const llvm::json::Array *paragraphArray = jsonParagraph.getAsArray()) {
@@ -166,6 +229,7 @@ bool parseParagraph(OpBuilder &builder, const JSONValue &jsonParagraph, Block &b
           if (auto typeStr = typeValue->getAsString()) {
             if (*typeStr == "centered") {
               // Parse centered special block
+              Location loc = locCtx.getLocation(*builder.getContext(), line, column);
               const JSONValue *contentValue = elementObj->get("content");
               if (contentValue) {
                 if (auto contentStr = contentValue->getAsString()) {
@@ -176,11 +240,14 @@ bool parseParagraph(OpBuilder &builder, const JSONValue &jsonParagraph, Block &b
                   auto contentArray = builder.getArrayAttr(contentAttrs);
                   builder.create<IMSpecialBlockOp>(loc,
                     builder.getStringAttr("centered"), contentArray);
+                  // Special blocks are treated as 1 character wide
+                  column += 1;
                   return true;
                 }
               }
             } else if (*typeStr == "codeblock") {
               // Parse codeblock special block
+              Location loc = locCtx.getLocation(*builder.getContext(), line, column);
               const JSONValue *contentValue = elementObj->get("content");
               if (contentValue) {
                 if (auto contentStr = contentValue->getAsString()) {
@@ -191,18 +258,22 @@ bool parseParagraph(OpBuilder &builder, const JSONValue &jsonParagraph, Block &b
                   auto contentArray = builder.getArrayAttr(contentAttrs);
                   builder.create<IMSpecialBlockOp>(loc,
                     builder.getStringAttr("bg_highlight"), contentArray);
+                  // Special blocks are treated as 1 character wide
+                  column += 1;
                   return true;
                 }
               }
             } else if (*typeStr == "list") {
               // Parse list
+              // List operation uses the current line number, starts at column 1
+              Location listLoc = locCtx.getLocation(*builder.getContext(), line, 1);
               const JSONValue *itemsValue = elementObj->get("items");
               if (itemsValue) {
                 if (const llvm::json::Array *itemsArray = itemsValue->getAsArray()) {
                   // Determine if numbered (check first item for numbering pattern)
                   // For now, assume bulleted lists (is_numbered = false)
                   bool isNumbered = false;
-                  auto listOp = builder.create<IMListOp>(loc, builder.getBoolAttr(isNumbered));
+                  auto listOp = builder.create<IMListOp>(listLoc, builder.getBoolAttr(isNumbered));
 
                   // Get the body region of the list (single block)
                   auto &listBody = listOp.getBody();
@@ -210,10 +281,20 @@ bool parseParagraph(OpBuilder &builder, const JSONValue &jsonParagraph, Block &b
                   builder.setInsertionPointToEnd(listBodyBlock);
 
                   // Parse each list item
-                  for (const JSONValue &itemValue : *itemsArray) {
+                  // First list item shares the same line as the list operation
+                  // Subsequent items increment the line number
+                  unsigned currentLine = line;
+                  for (size_t i = 0; i < itemsArray->size(); ++i) {
+                    const JSONValue &itemValue = (*itemsArray)[i];
                     if (const llvm::json::Array *itemArray = itemValue.getAsArray()) {
+                      // First item uses same line as list, subsequent items increment
+                      if (i > 0) {
+                        currentLine++;
+                      }
+
                       // Create IMListItemOp inside the list's body block
-                      auto listItemOp = builder.create<IMListItemOp>(loc);
+                      Location itemLoc = locCtx.getLocation(*builder.getContext(), currentLine, 1);
+                      auto listItemOp = builder.create<IMListItemOp>(itemLoc);
 
                       // Get the body region of the list item (single block)
                       auto &listItemBody = listItemOp.getBody();
@@ -221,11 +302,21 @@ bool parseParagraph(OpBuilder &builder, const JSONValue &jsonParagraph, Block &b
                       builder.setInsertionPointToEnd(listItemBodyBlock);
 
                       // Parse each paragraph in the item (all in the same block)
+                      // Each paragraph in a list item starts at column 1
+                      // If a paragraph contains a nested list, the line number will be updated
+                      unsigned itemColumn = 1;
+                      unsigned itemLine = currentLine; // Track line for this item
                       for (const JSONValue &paragraphValue : *itemArray) {
                         if (const llvm::json::Array *paragraphArray = paragraphValue.getAsArray()) {
                           // Parse the paragraph elements into the list item's body block
-                          if (!parseParagraph(builder, paragraphValue, *listItemBodyBlock)) {
+                          // Note: paragraphs inside list items don't increment line numbers by themselves
+                          // But if a paragraph contains a nested list, the line number will be updated
+                          if (!parseParagraph(builder, locCtx, paragraphValue, *listItemBodyBlock, itemLine, itemColumn)) {
                             return false;
+                          }
+                          // Update currentLine if the paragraph contained a nested list
+                          if (itemLine > currentLine) {
+                            currentLine = itemLine;
                           }
                         }
                       }
@@ -235,8 +326,13 @@ bool parseParagraph(OpBuilder &builder, const JSONValue &jsonParagraph, Block &b
                     }
                   }
 
+                  // Update the line parameter to reflect the final line after all list items
+                  line = currentLine;
+
                   // Restore insertion point to the original block
                   builder.setInsertionPointToEnd(&block);
+                  // List is treated as 1 character wide for column calculation
+                  column += 1;
                   return true;
                 }
               }
@@ -247,8 +343,9 @@ bool parseParagraph(OpBuilder &builder, const JSONValue &jsonParagraph, Block &b
     }
 
     // Regular paragraph: parse each element
+    // Elements are processed left-to-right, column accumulates
     for (const JSONValue &elementValue : *paragraphArray) {
-      if (!parseElement(builder, elementValue, block)) {
+      if (!parseElement(builder, locCtx, elementValue, block, line, column)) {
         // Skip elements we can't parse for now
         continue;
       }
@@ -280,8 +377,14 @@ bool parseFile(OpBuilder &builder, const JSONValue &jsonFile, ModuleOp module) {
     }
   }
 
+  // Create LocationContext with the file path
+  // Use path if available, otherwise use name, otherwise use a default
+  std::string filePath = path.empty() ? (name.empty() ? "<unknown>" : name) : path;
+  LocationContext locCtx(filePath);
+
   // Create a new IMDocumentOp
   builder.setInsertionPointToEnd(&module.getBodyRegion().front());
+  // Document operation uses unknown location (it's a container)
   auto documentOp = builder.create<IMDocumentOp>(builder.getUnknownLoc());
 
   // Get the body region of the document
@@ -290,13 +393,32 @@ bool parseFile(OpBuilder &builder, const JSONValue &jsonFile, ModuleOp module) {
   builder.setInsertionPointToEnd(bodyBlock);
 
   // Parse the document body
+  // Line numbers correspond to indices in the body array (0-indexed internally, 1-indexed for display)
   if (const llvm::json::Object *fileObj = jsonFile.getAsObject()) {
     if (const JSONValue *bodyValue = fileObj->get("body")) {
       if (const llvm::json::Array *bodyArray = bodyValue->getAsArray()) {
-        for (const JSONValue &paragraphValue : *bodyArray) {
-          if (!parseParagraph(builder, paragraphValue, *bodyBlock)) {
+        // Track the current line number, starting from 1
+        // Each paragraph in the body array corresponds to a line number
+        // If a paragraph contains a list, the list items consume additional lines
+        unsigned currentLine = 1;
+        for (size_t i = 0; i < bodyArray->size(); ++i) {
+          const JSONValue &paragraphValue = (*bodyArray)[i];
+          // Set the line number for this paragraph
+          // For the first paragraph, it's line 1
+          // For subsequent paragraphs, currentLine has been updated by the previous paragraph
+          // (either incremented if it was a regular paragraph, or set to the final line
+          // after a list if it contained a list)
+          unsigned paragraphLine = currentLine;
+          // Each paragraph starts at column 1
+          unsigned column = 1;
+          if (!parseParagraph(builder, locCtx, paragraphValue, *bodyBlock, paragraphLine, column)) {
             return false;
           }
+          // After parsing, paragraphLine will be updated if the paragraph contained a list
+          // Update currentLine to point to the line after this paragraph
+          // If it was a regular paragraph, paragraphLine is still the same, so we increment
+          // If it contained a list, paragraphLine was updated to the final line of the list
+          currentLine = paragraphLine + 1;
         }
       }
     }
