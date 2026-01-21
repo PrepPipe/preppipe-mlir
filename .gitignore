@@ -27,6 +27,8 @@ __pycache__
 # Bazel
 bazel-*
 
+# external dependencies
+externals/
 
 #Docker builds
 build_oot/

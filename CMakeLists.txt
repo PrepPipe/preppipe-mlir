@@ -1,10 +1,16 @@
 # CMakeLists.txt adapted from torch-mlir
 
+# There are two ways to get dependencies:
+# 1. Use system dependencies: install dependencies and set the appropriate variables; see the CI scripts for details.
+# 2. Build dependencies from source. You will need to:
+#       (1) run "git submodule update --init --recursive" to get all dependencies (they are git submodules)
+#       (2) run externals/fetch_files.py script to download files that are not git submodules (e.g., antlr4 jar)
+#    You don't need to run these commands if you have all the dependencies installed. See README.md for build instructions.
 #-------------------------------------------------------------------------------
 # Project setup and globals
 #-------------------------------------------------------------------------------
 
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.15)
 
 if(POLICY CMP0116)
   cmake_policy(SET CMP0116 OLD)
@@ -40,14 +46,91 @@ if(MSVC)
 endif()
 
 #-------------------------------------------------------------------------------
-# External dependencies
+# Helpers to handle external dependencies
+#
+# All these functions will use existing files, etc if already downloaded
+# So it is ok to run this script at configure time.
 #-------------------------------------------------------------------------------
 
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+
+# filename should be within the externals directory
+function(fetch_file filename)
+  execute_process(
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/externals/fetch_files.py
+      ${filename}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/externals
+    RESULT_VARIABLE _fetch_result
+    COMMAND_ECHO STDOUT
+  )
+  if (NOT _fetch_result EQUAL 0)
+    message(FATAL_ERROR "Cannot download ${filename}. Please either retry or manually download.")
+  endif()
+endfunction()
+
+# submodule_path should be within the externals directory
+function(fetch_submodule submodule_path)
+  execute_process(
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/externals/init_submodule.py
+      "externals/${submodule_path}"
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    RESULT_VARIABLE _fetch_result
+    COMMAND_ECHO STDOUT
+  )
+  if (NOT _fetch_result EQUAL 0)
+    message(FATAL_ERROR "Cannot fetch ${submodule_path}. Please either retry or manually download.")
+  endif()
+endfunction()
+
+#-------------------------------------------------------------------------------
+# Actual handling of external dependencies
+#-------------------------------------------------------------------------------
+
+list(APPEND CMAKE_PREFIX_PATH ${CMAKE_CURRENT_SOURCE_DIR}/externals/install)
+
+# antlr4
+# we need:
+# 1. ANTLR4_JAR_LOCATION pointing to antlr4 complete jar
+# 2. antlr4-runtime, either installed in the system or built from source (in externals folder)
 if (USE_SYSTEM_ANTLR4)
+  if(NOT DEFINED ANTLR4_JAR_LOCATION)
+    message(FATAL_ERROR "Please specify the location of antlr4 jar")
+  endif()
   find_package(antlr4-runtime CONFIG REQUIRED)
+  find_package(antlr4-generator CONFIG REQUIRED)
 else()
-  add_subdirectory(externals/antlr4-runtime-wrapper EXCLUDE_FROM_ALL)
+  fetch_file(antlr.jar)
+  find_file(ANTLR4_JAR_LOCATION NAMES antlr.jar PATHS ${CMAKE_CURRENT_SOURCE_DIR}/externals)
+  fetch_submodule(antlr4-runtime-wrapper/antlr4)
+  find_package(antlr4-runtime CONFIG)
+  # We need to build antlr4-runtime at configuration time to use antlr4-generator cmake functions.
+  if(NOT antlr4-runtime_FOUND)
+    message(STATUS "Building antlr4-runtime from source")
+    execute_process(
+      COMMAND
+        ${CMAKE_COMMAND}
+        -G ${CMAKE_GENERATOR}
+        "-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}"
+        "-DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_SOURCE_DIR}/externals/install"
+        -S ${CMAKE_CURRENT_SOURCE_DIR}/externals/antlr4-runtime-wrapper/antlr4/runtime/Cpp
+        -B ${CMAKE_CURRENT_SOURCE_DIR}/externals/build/antlr4-runtime
+        -DANTLR4_INSTALL=ON
+        -DWITH_DEMO=OFF
+      COMMAND
+        ${CMAKE_COMMAND} --build ${CMAKE_CURRENT_SOURCE_DIR}/externals/build/antlr4-runtime --target install
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/externals
+      COMMAND_ECHO STDOUT
+      COMMAND_ERROR_IS_FATAL ANY
+    )
+    find_package(antlr4-runtime CONFIG REQUIRED)
+  endif()
+  find_package(antlr4-generator CONFIG REQUIRED)
 endif()
+message(STATUS "Using ANTLR4=\"${ANTLR4}\"")
 
 #-------------------------------------------------------------------------------
 # Configure out-of-tree vs in-tree build

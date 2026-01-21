@@ -10,5 +10,5 @@ target_link_libraries(preppipe-pipeline PRIVATE
   MLIRTransforms
   MLIRArithDialect
   PrepPipeMLIRInitAll
-  PrepPipeFrontendJSON
+  PrepPipeFrontend
 )
